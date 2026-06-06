@@ -1,0 +1,66 @@
+### Health check
+GET http://localhost:3000/health
+
+### 1. Получить все книги (с пагинацией)
+GET http://localhost:3000/api/v1/books?page=1&limit=10
+
+### 2. Получить книги с фильтром по жанру
+GET http://localhost:3000/api/v1/books?genre=Fantasy
+
+### 3. Получить книгу по ID
+GET http://localhost:3000/api/v1/books/15
+
+### 4. Создать новую книгу
+POST http://localhost:3000/api/v1/books
+Content-Type: application/json
+
+{
+    "title": "The Midnight Library",
+    "isbn": "9780525559474",
+    "publishedYear": 2020,
+    "pageCount": 304,
+    "language": "English",
+    "description": "Between life and death there is a library.",
+    "authorId": "1",
+    "publisherId": "1",
+    "genreIds": ["1", "5"]
+}
+
+### 5. Обновить книгу
+PUT http://localhost:3000/api/v1/books/16
+Content-Type: application/json
+
+{
+    "title": "The Midnight Library - Updated Edition"
+}
+
+### 6. Удалить книгу
+DELETE http://localhost:3000/api/v1/books/16
+
+### 7. Добавить отзыв к книге
+POST http://localhost:3000/api/v1/books/1/reviews
+Content-Type: application/json
+
+{
+    "userName": "bookworm",
+    "rating": 5,
+    "comment": "Absolutely loved this book!"
+}
+
+### 8. Получить отзывы книги
+GET http://localhost:3000/api/v1/books/13/reviews
+
+### 9. Получить средний рейтинг книги
+GET http://localhost:3000/api/v1/books/1/average-rating
+
+### 10. Обновить отзыв
+PUT http://localhost:3000/api/v1/reviews/1
+Content-Type: application/json
+
+{
+    "rating": 4,
+    "comment": "Really good book!"
+}
+
+### 11. Удалить отзыв
+DELETE http://localhost:3000/api/v1/reviews/15
