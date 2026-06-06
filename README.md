@@ -265,7 +265,7 @@ backend/
 # Installation
 
 ## 1. Clone repository
-git clone <repository-url>
+git clone "repository-url"
 
 ## 2. Install dependencies
 npm install
