@@ -1,105 +1,114 @@
-import { v4 as uuidv4 } from 'uuid';
-import { books } from '../data/books';
-import { authors } from '../data/authors';
-import { publishers } from '../data/publishers';
-import { genres } from '../data/genres';
-import { reviews } from '../data/reviews';
-import { Book, BookWithDetails } from '../models/Book';
+import { prisma } from '../lib/prisma';
 import { CreateBookInput, UpdateBookInput, BookQueryInput } from '../validators';
 
 export class BookService {
+  static async getAllBooks(query: BookQueryInput) {
+    const page = parseInt(query.page || '1');
+    const limit = parseInt(query.limit || '10');
+    const skip = (page - 1) * limit;
 
-  private static generateNextId(): string {
-    const maxId = Math.max(...books.map(book => parseInt(book.id)).filter(id => !isNaN(id)), 0);
-    return (maxId + 1).toString();
-  }
-
-  static getAllBooks(query: BookQueryInput): { data: BookWithDetails[]; total: number } {
-    let filteredBooks = [...books];
+    const where: any = {};
 
     if (query.title) {
-      filteredBooks = filteredBooks.filter(book => 
-        book.title.toLowerCase().includes(query.title!.toLowerCase())
-      );
-    }
-
-    if (query.author) {
-      filteredBooks = filteredBooks.filter(book => {
-        const author = authors.find(a => a.id === book.authorId);
-        return author && (author.firstName.toLowerCase().includes(query.author!.toLowerCase()) ||
-                         author.lastName.toLowerCase().includes(query.author!.toLowerCase()));
-      });
-    }
-
-    if (query.genre) {
-      filteredBooks = filteredBooks.filter(book =>
-        book.genres.some(g => g.name.toLowerCase() === query.genre!.toLowerCase())
-      );
+      where.title = { contains: query.title, mode: 'insensitive' };
     }
 
     if (query.language) {
-      filteredBooks = filteredBooks.filter(book =>
-        book.language.toLowerCase() === query.language!.toLowerCase()
-      );
+      where.language = { equals: query.language, mode: 'insensitive' };
     }
 
     if (query.year) {
-      filteredBooks = filteredBooks.filter(book =>
-        book.publishedYear === parseInt(query.year!)
-      );
+      where.publishedYear = parseInt(query.year);
+    }
+
+    if (query.author) {
+      where.author = {
+        OR: [
+          { firstName: { contains: query.author, mode: 'insensitive' } },
+          { lastName: { contains: query.author, mode: 'insensitive' } },
+        ],
+      };
     }
 
     if (query.publisher) {
-      filteredBooks = filteredBooks.filter(book => {
-        const publisher = publishers.find(p => p.id === book.publisherId);
-        return publisher && publisher.name.toLowerCase().includes(query.publisher!.toLowerCase());
-      });
+      where.publisher = {
+        name: { contains: query.publisher, mode: 'insensitive' },
+      };
     }
 
-    if (query.sortBy) {
-      filteredBooks.sort((a, b) => {
-        let comparison = 0;
-        if (query.sortBy === 'title') {
-          comparison = a.title.localeCompare(b.title);
-        } else if (query.sortBy === 'publishedYear') {
-          comparison = a.publishedYear - b.publishedYear;
-        }
-        return query.order === 'asc' ? comparison : -comparison;
-      });
+    if (query.genre) {
+      where.genres = {
+        some: {
+          name: { equals: query.genre, mode: 'insensitive' },
+        },
+      };
     }
 
-    const page = parseInt(query.page!);
-    const limit = parseInt(query.limit!);
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedBooks = filteredBooks.slice(startIndex, endIndex);
+    let orderBy: any = {};
+    if (query.sortBy === 'title') {
+      orderBy = { title: query.order || 'asc' };
+    } else if (query.sortBy === 'publishedYear') {
+      orderBy = { publishedYear: query.order || 'asc' };
+    }
 
-    const booksWithDetails: BookWithDetails[] = paginatedBooks.map(book => {
-      const author = authors.find(a => a.id === book.authorId)!;
-      const publisher = publishers.find(p => p.id === book.publisherId)!;
-      return { ...book, author, publisher };
+    const [books, total] = await Promise.all([
+      prisma.book.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          author: true,
+          publisher: true,
+          genres: true,
+        },
+      }),
+      prisma.book.count({ where }),
+    ]);
+
+    return { data: books, total };
+  }
+
+  static async getBookById(id: string) {
+    const book = await prisma.book.findUnique({
+      where: { id },
+      include: {
+        author: true,
+        publisher: true,
+        genres: true,
+      },
     });
-
-    return {
-      data: booksWithDetails,
-      total: filteredBooks.length
-    };
+    return book;
   }
 
-  static getBookById(id: string): BookWithDetails | null {
-    const book = books.find(b => b.id === id);
-    if (!book) return null;
-    
-    const author = authors.find(a => a.id === book.authorId)!;
-    const publisher = publishers.find(p => p.id === book.publisherId)!;
-    return { ...book, author, publisher };
+  static async createBook(data: CreateBookInput) {
+    const book = await prisma.book.create({
+      data: {
+        title: data.title,
+        isbn: data.isbn,
+        publishedYear: data.publishedYear,
+        pageCount: data.pageCount,
+        language: data.language,
+        description: data.description,
+        coverImage: data.coverImage,
+        authorId: data.authorId,
+        publisherId: data.publisherId,
+        genres: {
+          connect: data.genreIds.map(id => ({ id })),
+        },
+      },
+      include: {
+        author: true,
+        publisher: true,
+        genres: true,
+      },
+    });
+    return book;
   }
 
-  static createBook(data: CreateBookInput): BookWithDetails {
-    const selectedGenres = genres.filter(g => data.genreIds.includes(g.id));
-    
-    const newBook: Book = {
-      id: this.generateNextId(),
+  static async updateBook(id: string, data: UpdateBookInput) {
+
+    const updateData: any = {
       title: data.title,
       isbn: data.isbn,
       publishedYear: data.publishedYear,
@@ -109,76 +118,76 @@ export class BookService {
       coverImage: data.coverImage,
       authorId: data.authorId,
       publisherId: data.publisherId,
-      genres: selectedGenres,
-      createdAt: new Date(),
-      updatedAt: new Date()
     };
-    
-    books.push(newBook);
-    
-    const author = authors.find(a => a.id === newBook.authorId)!;
-    const publisher = publishers.find(p => p.id === newBook.publisherId)!;
-    return { ...newBook, author, publisher };
-  }
 
-  static updateBook(id: string, data: UpdateBookInput): BookWithDetails | null {
-    const bookIndex = books.findIndex(b => b.id === id);
-    if (bookIndex === -1) return null;
-    
-    const existingBook = books[bookIndex];
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
 
-    let updatedGenres = existingBook.genres;
-    if (data.genreIds) {
-      updatedGenres = genres.filter(g => data.genreIds!.includes(g.id));
+    if (data.genreIds && data.genreIds.length > 0) {
+      updateData.genres = {
+        set: data.genreIds.map(id => ({ id })),
+      };
     }
-    
-    const updatedBook: Book = {
-      ...existingBook,
-      title: data.title ?? existingBook.title,
-      isbn: data.isbn ?? existingBook.isbn,
-      publishedYear: data.publishedYear ?? existingBook.publishedYear,
-      pageCount: data.pageCount ?? existingBook.pageCount,
-      language: data.language ?? existingBook.language,
-      description: data.description ?? existingBook.description,
-      coverImage: data.coverImage ?? existingBook.coverImage,
-      authorId: data.authorId ?? existingBook.authorId,
-      publisherId: data.publisherId ?? existingBook.publisherId,
-      genres: updatedGenres,
-      updatedAt: new Date()
-    };
-    
-    books[bookIndex] = updatedBook;
-    
-    const author = authors.find(a => a.id === updatedBook.authorId)!;
-    const publisher = publishers.find(p => p.id === updatedBook.publisherId)!;
-    return { ...updatedBook, author, publisher };
+
+    const book = await prisma.book.update({
+      where: { id },
+      data: updateData,
+      include: {
+        author: true,
+        publisher: true,
+        genres: true,
+      },
+    });
+    return book;
   }
 
-  static deleteBook(id: string): boolean {
-    const bookIndex = books.findIndex(b => b.id === id);
-    if (bookIndex === -1) return false;
-    
-    books.splice(bookIndex, 1);
+  static async deleteBook(id: string) {
+    await prisma.book.delete({ where: { id } });
     return true;
   }
 
-  static getBookReviews(bookId: string) {
-    return reviews.filter(r => r.bookId === bookId);
+  static async getBookReviews(bookId: string) {
+    const reviews = await prisma.review.findMany({
+      where: { bookId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return reviews;
   }
 
-  static getAverageRating(bookId: string): number {
-    const bookReviews = reviews.filter(r => r.bookId === bookId);
-    if (bookReviews.length === 0) return 0;
-    
-    const sum = bookReviews.reduce((acc, review) => acc + review.rating, 0);
-    return parseFloat((sum / bookReviews.length).toFixed(1));
+  static async getAverageRating(bookId: string) {
+    const result = await prisma.review.aggregate({
+      where: { bookId },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+
+    return {
+      averageRating: result._avg.rating || 0,
+      totalReviews: result._count.rating || 0,
+    };
   }
 
-  static checkAuthorExists(authorId: string): boolean {
-    return authors.some(a => a.id === authorId);
+  static async checkAuthorExists(authorId: string): Promise<boolean> {
+    const author = await prisma.author.findUnique({
+      where: { id: authorId },
+    });
+    return !!author;
   }
 
-  static checkPublisherExists(publisherId: string): boolean {
-    return publishers.some(p => p.id === publisherId);
+  static async checkPublisherExists(publisherId: string): Promise<boolean> {
+    const publisher = await prisma.publisher.findUnique({
+      where: { id: publisherId },
+    });
+    return !!publisher;
+  }
+
+  static async checkGenresExist(genreIds: string[]): Promise<boolean> {
+    const genres = await prisma.genre.findMany({
+      where: { id: { in: genreIds } },
+    });
+    return genres.length === genreIds.length;
   }
 }

@@ -8,7 +8,7 @@ GET http://localhost:3000/api/v1/books?page=1&limit=10
 GET http://localhost:3000/api/v1/books?genre=Fantasy
 
 ### 3. Получить книгу по ID
-GET http://localhost:3000/api/v1/books/15
+GET http://localhost:3000/api/v1/books/1
 
 ### 4. Создать новую книгу
 POST http://localhost:3000/api/v1/books

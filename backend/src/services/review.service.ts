@@ -1,68 +1,71 @@
-import { v4 as uuidv4 } from 'uuid';
-import { reviews } from '../data/reviews';
-import { Review } from '../models/Review';
+import { prisma } from '../lib/prisma';
 import { CreateReviewInput, UpdateReviewInput, ReviewQueryInput } from '../validators';
 
 export class ReviewService {
-
-  static getBookReviews(bookId: string, query: ReviewQueryInput): { data: Review[]; total: number } {
-    let filteredReviews = reviews.filter(r => r.bookId === bookId);
+  static async getBookReviews(bookId: string, query: ReviewQueryInput) {
+    const where: any = { bookId };
 
     if (query.rating) {
-      filteredReviews = filteredReviews.filter(r => r.rating === parseInt(query.rating!));
+      where.rating = parseInt(query.rating);
     }
 
+    const orderBy: any = {};
     if (query.sortBy === 'createdAt') {
-      filteredReviews.sort((a, b) => {
-        const comparison = a.createdAt.getTime() - b.createdAt.getTime();
-        return query.order === 'asc' ? comparison : -comparison;
-      });
+      orderBy.createdAt = query.order || 'desc';
     }
-    
+
+    const reviews = await prisma.review.findMany({
+      where,
+      orderBy,
+    });
+
     return {
-      data: filteredReviews,
-      total: filteredReviews.length
+      data: reviews,
+      total: reviews.length,
     };
   }
 
-  static getReviewById(id: string): Review | null {
-    return reviews.find(r => r.id === id) || null;
+  static async getReviewById(id: string) {
+    const review = await prisma.review.findUnique({
+      where: { id },
+    });
+    return review;
   }
 
-  static createReview(bookId: string, data: CreateReviewInput): Review {
-    const newReview: Review = {
-      id: uuidv4(),
-      bookId,
+  static async createReview(bookId: string, data: CreateReviewInput) {
+    const review = await prisma.review.create({
+      data: {
+        bookId,
+        userName: data.userName,
+        rating: data.rating,
+        comment: data.comment,
+      },
+    });
+    return review;
+  }
+
+  static async updateReview(id: string, data: UpdateReviewInput) {
+    const updateData: any = {
       userName: data.userName,
       rating: data.rating,
       comment: data.comment,
-      createdAt: new Date()
     };
-    
-    reviews.push(newReview);
-    return newReview;
+
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
+    const review = await prisma.review.update({
+      where: { id },
+      data: updateData,
+    });
+    return review;
   }
 
-  static updateReview(id: string, data: UpdateReviewInput): Review | null {
-    const reviewIndex = reviews.findIndex(r => r.id === id);
-    if (reviewIndex === -1) return null;
-    
-    const updatedReview: Review = {
-      ...reviews[reviewIndex],
-      userName: data.userName ?? reviews[reviewIndex].userName,
-      rating: data.rating ?? reviews[reviewIndex].rating,
-      comment: data.comment ?? reviews[reviewIndex].comment
-    };
-    
-    reviews[reviewIndex] = updatedReview;
-    return updatedReview;
-  }
-
-  static deleteReview(id: string): boolean {
-    const reviewIndex = reviews.findIndex(r => r.id === id);
-    if (reviewIndex === -1) return false;
-    
-    reviews.splice(reviewIndex, 1);
+  static async deleteReview(id: string) {
+    await prisma.review.delete({ where: { id } });
     return true;
   }
 }
