@@ -4,6 +4,10 @@ RESTful API for a Library Information System built with TypeScript, Node.js, Exp
 
 ---
 
+# Autor
+
+Artjom Pšenitšnikov
+
 # Technologies
 
 Backend technologies used in the project:
