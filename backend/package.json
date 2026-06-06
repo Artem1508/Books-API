@@ -1,0 +1,41 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "REST API for library management system",
+  "keywords": [
+    "API",
+    "library"
+  ],
+  "homepage": "https://github.com/Artem1508/Books-API#readme",
+  "bugs": {
+    "url": "https://github.com/Artem1508/Books-API/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Artem1508/Books-API.git"
+  },
+  "license": "MIT",
+  "author": "Artjom",
+  "type": "commonjs",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
+    "uuid": "^9.0.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.25",
+    "@types/node": "^20.19.42",
+    "@types/uuid": "^9.0.8",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
