@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { CreateBookInput, UpdateBookInput, BookQueryInput } from '../validators';
 
@@ -7,7 +8,7 @@ export class BookService {
     const limit = parseInt(query.limit || '10');
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.BookWhereInput = {};
 
     if (query.title) {
       where.title = { contains: query.title, mode: 'insensitive' };
@@ -44,7 +45,7 @@ export class BookService {
       };
     }
 
-    let orderBy: any = {};
+    let orderBy: Prisma.BookOrderByWithRelationInput = {};
     if (query.sortBy === 'title') {
       orderBy = { title: query.order || 'asc' };
     } else if (query.sortBy === 'publishedYear') {
