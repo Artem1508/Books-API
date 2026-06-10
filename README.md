@@ -4,9 +4,9 @@ RESTful API for a Library Information System built with TypeScript, Node.js, Exp
 
 ---
 
-# Autor
+# Autorid
 
-Artjom Pšenitšnikov
+Artjom Pšenitšnikov, Marek Veskimeister, Baddar Abobakr
 
 # Technologies
 
